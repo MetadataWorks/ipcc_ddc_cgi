@@ -1,0 +1,379 @@
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys
+
+email = 'anon'
+
+class classRequest:
+
+    def __init__(self):
+
+        self.env            = os.environ
+
+        self.fields         = cgi.FieldStorage()
+        self.path_info      = self.env.get("PATH_INFO", "/")
+        self.relative_path  = self.path_info.strip("/")
+        self.method         = self.env.get("REQUEST_METHOD", "")
+        self.query          = self.env.get("QUERY_STRING", "")
+        self.remote_address = self.env.get("REMOTE_ADDR", "")
+        self.cookie         = self.env.get("HTTP_COOKIE", None)
+
+        self.if_modified_since = self.env.get("HTTP_IF_MODIFIED_SINCE", None)
+        self.if_none_match     = self.env.get("HTTP_IF_NONE_MATCH", None)
+        self.email = ""
+        self.referer = ""
+        self.name = ""
+
+    def prep(self):
+      typ = 'first'
+
+      if self.fields.has_key( 'ddc-data-downl' ):
+        if self.fields['ddc-data-downl'].value == 'sending':
+          typ = 'self'
+
+## look for referer for 'back to referer' link
+      if self.fields.has_key("http-referer"):
+        self.referer = self.fields["http-referer"].value
+      else:
+        try:
+          self.referer = os.getenv('HTTP_REFERER' )
+        except:
+          self.referer = '/'
+      return typ
+
+
+
+class pparse:
+  
+   def __init__(self,p):
+      self.d = {}
+      self.u = []
+      bits = string.split(p, '/')
+      for b in bits:
+        if ( len(b) > 0 ) and ( type(b) == type('x') ):
+          kv = string.split(b, '=')
+          if len(kv) == 2:
+            self.d[kv[0]] = kv[1]
+          else:
+            self.u.append( b )
+        else:
+          self.u.append( type(b) )
+        
+ 
+rq = classRequest()
+
+kv = pparse( rq.path_info )
+typ = rq.prep()
+
+
+data_dir = '/usr/local/data/ipcc-ddc/data/netcdf/ar4_v2/'
+user_accnt_dir = '/var/www/ipccddc_devel/user_accnt/'
+user_hist_dir = '/var/www/ipccddc_devel/user_hist/'
+base_dir = '/usr/local/data/ipcc-ddc/data/'
+base_dir = '/badc/ipcc-ddc/data/'
+obase_dir = {'cru_ts_3.23_clim':'/badc/cru/data/'}
+    
+o1 = open( '/tmp/downl_l1.txt', 'w' )
+o1.write( 'downl2:: \n' )
+o1.write( rq.path_info + '\n' )
+path = string.strip( rq.path_info, '/' )
+
+
+class ddc_file:
+
+  def __init__(self,identifier):
+
+    dsdd = {'ar4_nc':'netcdf/ar4_v2/',
+       'ar4_tif':'geotiff/ar4_v2/',
+       'cru10_nc': 'netcdf/obs/cru_ts2_1/clim_10/',
+       'cru10_zip':'geotiff/obs/cru_ts2_1/clim_10/',
+       'cru30_nc': 'netcdf/obs/cru_ts2_1/clim_30/',
+       'cru30_zip':'geotiff/obs/cru_ts2_1/clim_30/',
+       'cru_ts_3.23_clim':'cru_ts/'
+        }
+
+    bits = string.split( identifier, '/' )
+    data_id = bits[-1]
+    dataset_id = bits[0]
+    oo = open( '/tmp/downl_report.txt', 'w' )
+    oo.write( 'downl2: ddc_file:init: \n' )
+    oo.write( identifier + '\n' )
+
+    self.message = ''
+
+    oo.write( dataset_id + '\n' )
+    if dataset_id not in dsdd.keys():
+      oo.write( 'bad dataset_id: %s\n' % dataset_id )
+      oo.close()
+      raise 'bad dataset_id'
+
+    bdir = obase_dir.get( dataset_id, base_dir )
+    self.dsdir = bdir + dsdd[ dataset_id ]
+
+    oo.write( data_id + '\n' )
+    dbits = string.split( data_id, '.' )
+    if len(dbits) == 3:
+      if dbits[1] in ['cyto180','extractPoint']:
+        self.action = dbits[1]
+      else:
+        raise 'action not recognised'
+      self.file_name = dbits[0] + '.' + dbits[2]
+      oo.write( 'xxx\n' )
+    elif len(dbits) == 2 or dataset_id in ['cru_ts_3.23_clim',] :
+      self.action = None
+      self.file_name = data_id
+      oo.write( 'yyy\n' )
+    else:
+      oo.write( 'zzz\n' )
+      raise 'bad file name'
+## ar4, gcm projections
+
+    oo.write( self.file_name + '\n' )
+    if dataset_id in ['ar4_nc','ar4_tif']:
+      fbs = string.split( self.file_name, '_' )
+      self.data_dir = self.dsdir  +  string.split(bits[-2],'-')[0]
+      if dataset_id in ['ar4_nc']:
+        if self.file_name[-3:] == '.nc':
+          sub_dir = fbs[3]
+        else:
+          sub_dir = fbs[2]
+        sub_dir = string.replace( sub_dir, "-change", "" )
+        self.data_dir = '%s%s' % (self.dsdir,sub_dir)
+      else:
+        self.data_dir = '%s%s/%s/%s' % (self.dsdir,fbs[3],fbs[0],fbs[1])
+    elif dataset_id in ['cru_ts_3.23_clim',]:
+      self.data_dir = self.dsdir + dataset_id
+    else:
+      self.data_dir = self.dsdir + string.split( data_id, '_')[1]
+    oo.write( 'data dir: ' + self.data_dir + '\n' )
+    oo.close()
+
+
+  def check_file(self):
+    self.this_file = self.data_dir + '/' + self.file_name
+## check that file exists
+    if os.path.isfile( self.this_file ):
+          self.file_not_found = False
+    else:
+          self.file_not_found = True
+          self.message += 'file not found:%s<br/>\n' % self.this_file
+
+  def deliver( self, cook=None, user=None ):
+    import time
+    if user != None:
+      oo = open( '%s%s' % (user_hist_dir, user.email), 'a' )
+      oo.write( '%s::%s\n' % (time.asctime(), self.this_file) )
+      oo.write( 'size:: %s\n' % os.path.getsize( self.this_file ) )
+    sys.stdout.write( "Content-type: %s\n" % 'application/tar' )
+    if cook != None:
+      sys.stdout.write( cook.output() )
+      sys.stdout.write( '\n' )
+      if user != None:
+        oo.write( 'setting cookie\n' )
+        oo.write( cook.output() )
+    if user != None:
+      oo.close()
+    sys.stdout.write( '\n' )
+    if ddd.action == None:
+      file_handle = open( self.this_file, 'r' )
+      data = file_handle.read()
+    elif self.action == 'cyto180':
+      sys.path.insert(0,'grid_aps')
+      import cyto180 as u
+      u.nc_lon_cyc( self.this_file, '/tmp/tmp.nc' )
+      file_handle = open( '/tmp/tmp.nc', 'r' )
+      data = file_handle.read()
+    elif self.action == 'extractPoint':
+     # import cdms
+      #nc = cdms.read( self.this_file, 'r' )
+      #lat = nc.variables['latitude'].getValue()
+     # lon = nc.variables['longitude'].getValue()
+      ll = open( 'extractPoint_html.template', 'r').readlines()
+      ll1 = string.join( ll )
+      sys.stdout.write( ll1 % { 'fileName':self.file_name } )
+      
+    else:
+      raise 'bad action'
+    file_handle.close()
+    sys.stdout.write( data )
+
+class ddc_user:
+
+  def __init__( self, typ ):
+    self.id = 'user'
+    self.message = ''
+    self.email = 'anon'
+    self.name = 'def'
+    self.description = 'def'
+    self.cook = None
+    self.typ = typ
+
+  def register( self,  rqf ):
+    atr = None
+    ata = None
+    if rqf.has_key( 'accept-terms' ):
+      ats = str(rqf['accept-terms'].value)
+      if ats == 'registered':
+        atr = True
+      elif ats == 'anonymous':
+        ata = True
+
+    if atr != None:
+      self.typ = 'reg'
+      self.email = 'def'
+      self.name = 'def'
+      self.description = 'def'
+      if rqf.has_key( 'xxxxx' ):
+        self.email = rqf['xxxxx'].value
+
+      if rqf.has_key( 'name' ):
+        self.name = rqf['name'].value
+
+      if rqf.has_key( 'description' ):
+        self.description = rqf['description'].value
+
+      self.email = string.replace(self.email,'/','__' )
+      self.name = str(self.name)
+## save account details
+      oo = open( '%s%s' % (user_accnt_dir, self.email), 'w' )
+      oo.write( '%s\n' % self.email )
+      oo.write( '%s\n' % self.name )
+      oo.write( '%s\n' % self.description )
+      oo.close()
+      import time
+      import Cookie
+## set expiry time one year in future
+      expi = time.asctime( time.gmtime(time.time() + 3600*24*365 ) )
+      b = string.split( expi )
+      expires = '%s, %s-%s-%s %s GMT' % (b[0], b[2], b[1], b[4], b[3] )
+      self.cook = Cookie.Cookie( 'ddc' )
+      self.name = string.replace( self.name, ':', '-' )
+      self.email = string.replace( self.email, ':', '-' )
+      self.cook['ddc-download'] = 'download-request:%s:%s' % (self.email,self.name)
+      self.cook['ddc-download']['expires'] = expires
+      self.cook['ddc-download']['path'] = '/cgi-bin/downl'
+
+      if string.find( self.email, '@' ) == -1:
+        self.typ = 'error'
+        self.message += '''<font color="red">Error: Please enter a valid email address</font>'''
+
+    elif ata != None:
+      self.typ = 'anon'
+    else:
+      self.typ = 'error'
+      self.message += '''<font color="red">You must accept either the terms and conditions for either
+    registered or anonymous download before downloading data</font>'''
+
+
+  def check_cookie( self, cookie ):
+    cks = string.split( cookie, ';' )
+    cook_val = 'xxx'
+    for c in cks:
+      this_cook_val = string.strip(string.split( c, '=', maxsplit=1 )[-1], '"')
+      cook_name = string.strip(string.split( c, '=', maxsplit=1 )[0] )
+    ##message += c + ':' + cook_name + '::'
+      if cook_name == 'ddc-download':
+        cook_val = this_cook_val
+
+    bits = string.split( cook_val, ':' )
+  ##message += 'COOKIE::%s;;%s\n' % (cookie, cook_val )
+  ##oo.write( message )
+  
+    if len(bits) == 3:
+      if self.email == 'anon':
+        self.email = bits[1]
+        self.name = bits[2]
+        if os.path.isfile(user_accnt_dir+self.email):
+          self.message += 'looks like you have registered'
+          self.typ = 'registered'
+
+      if string.find( self.email, '@' ) == -1:
+        self.typ = 'error'
+        self.message += '''<font color="red">error: Please enter a valid email address</font>'''
+
+
+o1.write( '--> ddc_file, path=%s\n' % path )
+
+try:
+  ddd = ddc_file( path )
+except:
+  o1.write( '--> ddc_file, failed\n' )
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+  sys.stdout.write( "Status: 404 Not Found\n\n" )
+  sys.stdout.write( "Status: 404 Not Found\n\n" )
+  o1.close()
+  sys.exit(0)
+
+o1.write( ' ====== \n' )
+o1.write( ddd.file_name + '\n' )
+o1.write( 'data_dir::' + ddd.data_dir + '\n' )
+
+ddd.check_file()
+o1.write( 'file::' + ddd.this_file + '\n' )
+o1.write( 'file checked\n' )
+
+ddu = ddc_user(typ)
+o1.write( 'user checked\n' )
+
+## if submitted, check form values
+if ddu.typ == 'self':
+  o1.write( 'user registration check\n' )
+  ddu.register( rq.fields )
+## o1.write( 'email, typ:: %s,%s\n' % (ddu.email, ddu.typ) )
+
+## rq.cookie = None
+if rq.cookie != None:
+  o1.write( 'user cookie check\n' )
+  ddu.check_cookie( rq.cookie )
+o1.write( 'email, typ:: %s,%s\n' % (ddu.email, ddu.typ) )
+
+o1.write( ' +++++++++++++ \n' )
+
+
+if ddd.file_not_found or (ddu.typ in ['first', 'error']):
+  if  ddd.file_not_found:
+    o1.write( 'file not found, typ=%s\n' % ddu.typ )
+  html = open( 'data/downl_text.txt', 'r' ).readlines()
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+  try:
+
+    if ddu.cook != None:
+      try:
+        sys.stdout.write( str(ddu.cook.output()) + '\n' )
+      except:
+        sys.stdout.write( '\n failed to read cookie\n' )
+    sys.stdout.write( '\n' )
+    sys.stdout.write( '\n' )
+  
+    path = rq.path_info
+    o1.write( path + '\n' )
+    referer = rq.referer
+    o1.write( str(referer) + '\n' )
+    message = ddd.message + ddu.message
+    o1.write( message + '\n' )
+    name = ddu.name
+    o1.write( name + '\n' )
+    email = ddu.email
+    o1.write( email + '\n' )
+    description = ddu.description
+    o1.write( description + '\n' )
+    o1.write( 'trying sub\n' )
+    title = 'IPCC DDC: Data download'
+
+    sys.stdout.write( string.join( html, '\n' )  % locals() )
+  except:
+    sys.stdout.write( '\n\n File not found: + error writing error page\n' )
+else:
+  try:
+    o1.write( 'trying to deliver\n' )
+    ddd.deliver( cook=ddu.cook )
+  except:
+    o1.write( 'failed to deliver\n' )
+    sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+    if ddu.cook != None:
+      sys.stdout.write( ddu.cook.output() )
+      sys.stdout.write( '\n' )
+    sys.stdout.write( '\n' )
+    sys.stdout.write( "error" )
+    sys.stdout.write( ddd.this_file )
+
+o1.close()

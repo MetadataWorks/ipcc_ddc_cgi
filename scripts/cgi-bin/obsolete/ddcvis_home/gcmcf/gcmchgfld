@@ -1,0 +1,184 @@
+#!/usr/bin/env tclsh
+
+source gcf_common.tcl
+
+proc cexec {args} {
+  global Logfile
+  set rc [catch "exec $args" out]
+  ##puts "$rc $args\n$out"
+  set f [open $Logfile a]
+  puts $f "\n$args\n$rc $out"
+  close $f
+}
+
+
+proc error {text} {
+  puts [list 1 $text]
+  exit
+}
+
+
+proc setcheck {name val allowable} {
+  if {[lsearch $allowable $val]<0} {
+    error "$name must be one of $allowable"
+  }
+}
+
+
+proc rangecheck {name val lo hi} {
+  if {$val<$lo || $val>$hi} {
+    error "$name must be in range $lo to $hi"
+  }
+}
+
+
+############## MAIN ##############
+
+if {[lindex $argv 0]=="-csv"} {
+  set csv 1
+  set argv [lreplace $argv 0 0]
+} else {
+  set csv 0
+}
+
+if {[llength $argv]==1} {
+  set argv [split $argv "_"]
+}
+
+set model [lindex $argv 0]
+set scen  [lindex $argv 1]
+set var   [lindex $argv 2]
+set dec   [lindex $argv 3]
+set land  [lindex $argv 4]
+set mon1  [lindex $argv 5]
+set mon2  [lindex $argv 6]
+
+foreach gs $GcmScenarios {
+  lappend modscens [lindex $gs 0]
+  set msname([lindex $gs 0]) [lindex $gs 1]
+}
+
+foreach v $Variables {
+  lappend vars [lindex $v 0]
+  regsub -all {&#176;} [lindex $v 1] "degrees " vn
+  set varname([lindex $v 0]) $vn
+}
+
+set modscen "${model}_${scen}"
+setcheck "Model/Scenario" $modscen $modscens
+
+setcheck "Variable" $var $vars
+setcheck "Land/Land+Ocean" $land {L B}
+rangecheck "Start month" $mon1 1 12
+rangecheck "End month"   $mon2 1 12
+
+set combo "${model}_${scen}_${var}_${dec}"
+set pgm "cooked/$combo.pgm"
+if {![file exists $pgm]} {
+  error "No data for requested combination $combo"
+}
+
+set map "cooked/map_${var}.ppm"
+if {![file exists $map]} {
+  error "Unknown variable!"
+}
+
+
+set gif "/tmp/ddc_legacy_cache/gcmcf/${model}_${scen}_${var}_${dec}_${land}_${mon1}_${mon2}.gif"
+regsub "gif" $gif "log" Logfile
+
+if {!$csv && [file exists $gif]&&[file size $gif]>0} {
+  # return cached image
+  puts [list 0 $gif]
+  exit
+}
+
+array set month {1 January 2 February 3 March 4 April 5 May 6 June 7 July 8 August 9 September 10 October 11 November 12 December}
+ 
+set title "$msname($modscen)  $month($mon1) to $month($mon2)  $varname($var)  ${dec}s  relative to 1961-90"
+
+set tmp "/tmp/gcmchgfld[pid]"
+file mkdir $tmp
+
+# return comma-separated values instead of image?
+if {$csv} {
+  set f [open cooked/ranges.dat r]
+  set a [read -nonewline $f]
+  close $f
+  foreach b [split $a \n] {
+    if {[lindex $b 0]==$var} {
+      set lo [lindex $b 1]
+      set hi [lindex $b 2]
+    }
+  }
+  set mul [expr ($hi-$lo)/250.0]
+  cexec ./pgmmonths $mon1 $mon2 <$pgm > $tmp/data.pgm
+  set a [exec pnmfile $tmp/data.pgm]
+  set w [lindex $a 3] ; set h [lindex $a 5]
+  if {$land=="L"} {
+    cexec pnmscale -nomix -width $w -height $h map.pbm | pgmtopbm -threshold > $tmp/map.pbm
+    exec ppmmake white $w $h | pnmcomp -alpha=$tmp/map.pbm -invert $tmp/data.pgm | ppmtopgm > $tmp/masked.pgm
+  } else {
+    file rename $tmp/data.pgm $tmp/masked.pgm
+  }
+  set f [open "| pnmtoplainpnm $tmp/masked.pgm" r]
+  set a [join [lrange [split [read -nonewline $f] \n] 3 end]]
+  close $f
+  puts $title
+  set y 0 ; set x 0
+  foreach b $a {
+    if {$b>250} {
+      #set c "-9999"
+      set c ""
+    } else {
+      set c [format "%0.2f" [expr $b*$mul+$lo]]
+    }
+    puts -nonewline $c
+    incr x
+    if {$x<$w} {
+      puts -nonewline ","
+    } else {
+      puts ""
+      set x 0
+      incr y
+    }
+  }
+  file delete -force $tmp
+  exit
+}
+
+
+# plot data
+cexec ./pgmmonths $mon1 $mon2 <$pgm | pgmtoppm -map $map | pnmscale -nomix -width 720 -height 360 > $tmp/data.ppm
+if {$land=="L"} {
+  cexec ppmmake white 720 360 | pnmcomp -alpha=map.pbm -invert $tmp/data.ppm > $tmp/masked.ppm
+} else {
+  file rename $tmp/data.ppm $tmp/masked.ppm
+}
+
+# overlay coastline
+cexec pnmarith -multiply $tmp/masked.ppm coast.pbm >$tmp/withcoast.ppm
+
+# overlap grid composite image
+cexec ppmmake white 721 361 | pnmpaste $tmp/withcoast.ppm 0 0 > $tmp/enlarged.ppm
+cexec pnmarith -multiply $tmp/enlarged.ppm grid.pbm > $tmp/withgrid.ppm
+
+# create text
+cexec pbmtext $title | pnmcrop > $tmp/title.pbm
+cexec pbmtext "Plotted by the IPCC-DDC" | pnmcrop > $tmp/plotted.pbm
+set w [lindex [exec pnmfile $tmp/plotted.pbm] 3]
+
+# build composite
+cexec giftopnm cooked/key_$var.gif > $tmp/key.ppm
+cexec ppmmake white 725 430 | \
+      pnmpaste $tmp/withgrid.ppm 2 20 | \
+      pnmpaste $tmp/title.pbm 4 4 | \
+      pnmpaste $tmp/key.ppm 197 385 | \
+      pnmpaste $tmp/plotted.pbm [expr 720-$w] 395 | \
+      ppmtogif > $gif
+
+puts [list 0 $gif]
+
+file delete -force $tmp
+
+

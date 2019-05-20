@@ -1,0 +1,146 @@
+"""Simple script to grab a file from a mounted disk and write to standard out"""
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys
+
+email = 'anon'
+
+class classRequest:
+
+    def __init__(self):
+
+        self.env            = os.environ
+
+        self.fields         = cgi.FieldStorage()
+        self.path_info      = self.env.get("PATH_INFO", "/")
+        self.relative_path  = self.path_info.strip("/")
+        self.method         = self.env.get("REQUEST_METHOD", "")
+        self.query          = self.env.get("QUERY_STRING", "")
+        self.remote_address = self.env.get("REMOTE_ADDR", "")
+        self.cookie         = self.env.get("HTTP_COOKIE", None)
+
+        self.if_modified_since = self.env.get("HTTP_IF_MODIFIED_SINCE", None)
+        self.if_none_match     = self.env.get("HTTP_IF_NONE_MATCH", None)
+        self.email = ""
+        self.referer = ""
+        self.name = ""
+
+    def prep(self):
+      typ = 'first'
+
+      if self.fields.has_key( 'ddc-data-downl' ):
+        if self.fields['ddc-data-downl'].value == 'sending':
+          typ = 'self'
+
+## look for referer for 'back to referer' link
+      if self.fields.has_key("http-referer"):
+        self.referer = self.fields["http-referer"].value
+      else:
+        try:
+          self.referer = os.getenv('HTTP_REFERER' )
+        except:
+          self.referer = '/'
+      return typ
+
+
+
+class pparse:
+  
+   def __init__(self,p):
+      self.d = {}
+      self.u = []
+      bits = string.split(p, '/')
+      for b in bits:
+        if ( len(b) > 0 ) and ( type(b) == type('x') ):
+          kv = string.split(b, '=')
+          if len(kv) == 2:
+            self.d[kv[0]] = kv[1]
+          else:
+            self.u.append( b )
+        else:
+          self.u.append( type(b) )
+        
+ 
+class ddc_file:
+
+  def __init__(self,identifier):
+
+#http://www-devel.ipcc-data.org/data/scatter_plots/plotpoints3.txt
+    self.dsdd = {'scatter':'data/scatter_plots/',
+       'ar4_tif':'geotiff/ar4_v2/',
+       'cru10_nc': 'netcdf/obs/cru_ts2_1/clim_10/',
+       'cru10_zip':'geotiff/obs/cru_ts2_1/clim_10/',
+       'cru30_nc': 'netcdf/obs/cru_ts2_1/clim_30/',
+       'cru30_zip':'geotiff/obs/cru_ts2_1/clim_30/',
+       'cru_ts_3.23_clim':'cru_ts/'
+        }
+
+    self.bits = string.split( identifier, '/' )
+    self.data_id = self.bits[-1]
+    self.dataset_id = self.bits[0]
+
+    self.message = ''
+
+  def r1(self):
+
+    if self.dataset_id not in self.dsdd.keys():
+      self.message = 'bad self.dataset_id: %s' % self.dataset_id
+      raise 'bad dataset_id'
+
+    self.data_dir = base_dir + self.dsdd[ self.dataset_id ]
+
+    self.file_name = self.data_id
+
+
+  def check_file(self):
+    self.this_file = self.data_dir + '/' + self.file_name
+## check that file exists
+    if os.path.isfile( self.this_file ):
+          self.file_not_found = False
+    else:
+          self.file_not_found = True
+          self.message += 'file not found:%s<br/>\n' % self.this_file
+
+  def deliver( self, cook=None, user=None ):
+    sys.stdout.write( "Content-type: %s\n" % 'application/tar' )
+    sys.stdout.write( '\n' )
+    file_handle = open( self.this_file, 'r' )
+    data = file_handle.read()
+    file_handle.close()
+    sys.stdout.write( data )
+
+rq = classRequest()
+
+kv = pparse( rq.path_info )
+typ = rq.prep()
+
+base_dir = '/var/www/ipccddc_devel/html/'
+    
+path = string.strip( rq.path_info, '/' )
+
+try:
+  ddd = ddc_file( path )
+  ddd.r1()
+except:
+  sys.stdout.write( "Content-type: %s\n\n" % 'text/html' )
+  if type( ddd.message ) == type( '' ):
+    sys.stdout.write( "Status: 404 Not Found\n\n%s" % ddd.message )
+  sys.stdout.write( "Status: 404 Not Found\n\n" )
+  sys.exit(0)
+
+ddd.check_file()
+
+if ddd.file_not_found:
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+  sys.stdout.write( '\n\n File not found: \n' )
+else:
+  try:
+    ddd.deliver(  )
+  except:
+    sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+    if ddu.cook != None:
+      sys.stdout.write(  )
+      sys.stdout.write( '\n' )
+    sys.stdout.write( '\n' )
+    sys.stdout.write( "error" )
+    sys.stdout.write( ddd.this_file )
+

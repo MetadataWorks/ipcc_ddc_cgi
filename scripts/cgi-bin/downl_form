@@ -1,0 +1,211 @@
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys
+
+email = 'anon'
+
+class classRequest:
+
+    def __init__(self):
+
+        self.env            = os.environ
+
+        self.fields         = cgi.FieldStorage()
+        self.path_info      = self.env.get("PATH_INFO", "/")
+        self.relative_path  = self.path_info.strip("/")
+        self.method         = self.env.get("REQUEST_METHOD", "")
+        self.query          = self.env.get("QUERY_STRING", "")
+        self.remote_address = self.env.get("REMOTE_ADDR", "")
+        self.cookie         = self.env.get("HTTP_COOKIE", None)
+
+        self.if_modified_since = self.env.get("HTTP_IF_MODIFIED_SINCE", None)
+        self.if_none_match     = self.env.get("HTTP_IF_NONE_MATCH", None)
+
+
+class qparse:
+  
+   def __init__(self,q):
+      self.d = {}
+      self.u = []
+      bits = string.split(str(q), '&')
+      for b in bits:
+        if ( len(b) > 0 ) and ( type(b) == type('x') ):
+          kv = string.split(b, '=')
+          if len(kv) == 2:
+            self.d[kv[0]] = kv[1]
+          else:
+            self.u.append( b )
+        else:
+          self.u.append( type(b) )
+        
+form = cgi.FieldStorage()
+oo = open( '/tmp/mnj_ddc_downl_form.txt', 'w' )
+for k in form.keys():
+  oo.write( '%s::%s\n' % (k,form[k]) )
+oo.close()
+cook = None
+rq = classRequest()
+
+
+message = ''
+## look for referer for 'back to referer' link
+if rq.fields.has_key("http-referer"):
+  referer = rq.fields["http-referer"].value
+else:
+  try:
+    referer = os.getenv('HTTP_REFERER' )
+  except:
+    referer = '/'
+
+forms = { 'cruts21':['t','v','f'], 'ar4_gcm':['0','1','2','3'] }
+prefix = { 'cruts21':'cruts21', 'ar4_gcm':'cat' }
+
+class formcontent:
+
+  def __init__(self, rq ):
+
+    self.res = {}
+    self.form_id = string.strip( str( rq.path_info  ), '/' )
+    if self.form_id in forms.keys():
+      kv = qparse( rq.query )
+      for k in forms[self.form_id]:
+        self.res[k] = kv.d.get( prefix[self.form_id] + k, 'xxxx' )
+      if kv.d.has_key( 'gd' ):
+        self.request = 'get_data'
+        self.root_dir = 'http://www-devel.ipcc-data.org/cgi-bin/downl/'
+        fpat = '%(dir)s_%(var)s_%(time)s.%(fmts)s'
+      elif kv.d.has_key( 'vm' ):
+        self.request = 'view_meta'
+        self.root_dir = '/'
+        fpat = '%(dir)s_%(var)s_%(time)s_meta.txt'
+      elif kv.d.has_key( 'gd_pt_rq' ):
+        self.request = 'get_data_point_request'
+        self.root_dir = 'http://www-devel.ipcc-data.org/cgi-bin/downl/'
+        fpat = '%(dir)s_%(var)s_%(time)s.%(fmts)s'
+      elif kv.d.has_key( 'gd_pt' ):
+        self.request = 'get_data_point'
+        self.root_dir = 'http://www-devel.ipcc-data.org/cgi-bin/downl/'
+        fpat = '%(dir)s_%(var)s_%(time)s.gpt%(lon)s.%(lat)s.%(fmts)s'
+
+
+    ### need to decide on clear implementation.
+    ### this script is specific to cru_ts2.1
+    ### want something more general: can use the idea that a name with multiple "."s implies processing.
+
+  def handler(self):
+    if self.form_id == 'cruts21':
+      starty = int( self.res['t'][2:6] )
+      endy = int( self.res['t'][6:10] )
+      plen = endy+1-starty
+      if plen not in [10,30]:
+        self.message = 'inappropiate time period'
+        raise 'bad data selection'
+      fmt = self.res['f']
+      if fmt not in ['nc','tif','zip']:
+        self.message = 'inappropiate format'
+        raise 'bad data selection'
+
+      if self.request == 'get_data':
+        self.subdir = 'cru%s_%s' % (plen, fmt)
+        self.file = 'cru_%s_clim_%s-%s.%s' % (self.res['v'], starty, endy, self.res['f'] )
+      elif self.request == 'view_meta':
+        self.subdir = 'obs/info/cru%s' % (plen)
+        self.file = 'cru_%s_clim_%s-%s.html' % (self.res['v'], starty, endy )
+    elif self.form_id == 'ar4_gcm':
+      if self.request == 'get_data':
+        ii = open( 'data/ar4_models.txt', 'r' )
+        m0 = {}
+        for l in ii.readlines():
+          bits = string.split( string.strip(l) )
+          m0[bits[0]] = bits[1]
+        ii.close()
+        self.subdir = 'ar4_nc'
+        self.file = '%s_%s_%s_%s.tar' % (m0[self.res['0']],self.res['1'],self.res['2'],self.res['3'])
+      elif self.request == 'view_meta':
+        self.subdir = 'ar4/info/'
+        this_var = string.replace( self.res['2'], '-change','')
+        self.file = '%s_%s_%s.html' % (self.res['0'],self.res['1'],this_var)
+       
+
+fc = formcontent( rq )
+
+
+otyp = 2
+         
+htmlpat = """
+<html>
+<head>
+<META HTTP-EQUIV="Refresh"
+      CONTENT="%(delay)s; URL=%(url)s">
+</head>
+<body>
+
+Your browser should forward you to this URL in %(delay)s second%(delay_plural)s:
+<a href="%(url)s">%(url)s</a>.
+</body>
+</html>
+"""
+
+htmlerrorpat = """
+<html>
+<head>
+</head>
+<body>
+
+%(message)s
+</body>
+</html>
+"""
+
+sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+sys.stdout.write( '\n' )
+sys.stdout.write( '\n' )
+if otyp == 1:
+  sys.stdout.write( 'hello<br/> \n' )
+  sys.stdout.write( str( rq.fields.keys() ) )
+  sys.stdout.write( '\n path:: \n' )
+  sys.stdout.write( str( rq.path_info  ))
+  sys.stdout.write( '\n' )
+  for k in rq.fields.keys():
+    sys.stdout.write( '%s :: %s ' % (k,str( rq.fields[k] )) )
+  sys.stdout.write( 'query:: <br/> \n' )
+  sys.stdout.write( str(rq.query) )
+  sys.stdout.write( '<br/> \n' )
+  sys.stdout.write( 'bye<br/> \n' )
+  kv = qparse( rq.query )
+  for k in kv.d.keys():
+      sys.stdout.write( "%s<br/>\n" % k )
+      sys.stdout.write( "%s:: %s<br/>\n" % (k,str(kv.d[k]) ) )
+  
+  if kv.d.has_key( 'gd' ):
+    fpat = '%(dir)s_%(var)s_%(time)s.%(fmts)s'
+  elif kv.d.has_key( 'vm' ):
+    fpat = '%(dir)s_%(var)s_%(time)s_meta.txt'
+  
+  dir = 'test_dir'
+  var = kv.d['cruts21v']
+  fmt = kv.d['cruts21f']
+  t = kv.d['cruts21t']
+  y1 = int( t[0:4] )
+  y2 = int( t[4:] )
+  time = '%s-%s' % (y1,y2)
+  
+  file = fpat % locals()
+  
+  sys.stdout.write( '/n/n<br/><br/>%s<br/> ' % file )
+  sys.stdout.write( 'bye <br/>\n' )
+
+else:
+  fc = formcontent( rq )
+  fc.handler()
+  delay = { 'view_meta':0, 'get_data':0 }[fc.request]
+  if delay == 1:
+    delay_plural=''
+  else:
+    delay_plural='s'
+  try:
+    url = fc.root_dir + fc.subdir + '/' + fc.file
+    html = htmlpat % { 'url':url, 'delay':delay, 'delay_plural':delay_plural }
+  except:
+    html = htmlerrorpat % { 'message':'could not generate URL' }
+  sys.stdout.write( html )
+

@@ -1,0 +1,34 @@
+
+xsl include directive does not appear to work (not compiled according to error message),
+need to figure out how to either do the includes in python, or simply copy into the xsl file
+
+
+downl:  cleared up, better checking: still has a logical flow issue, and multiple use cases which
+are not clearly defined (i.e. with cookie, without cookie, resetting inof in a dud cookie, first pass,
+second pass:: check again on Mnday, when cookies cleared)
+
+
+can then move downl_form into downl as an option, with a form processing class.
+
+
+extracting data from a point: would be good to be able to bundle a few things into a single csv.
+Not clear how to package this into existing "downl" structure. May need to move away from putting all
+info in the filename: <model>.latxx_lonxx.csv
+If time series are only available as all timeperiods, all scenarios, this will be simplified.
+Alternatively, <nmodel>_<etc>.latxx-xx_lonxx-xx.csv, could be a section.
+
+
+does bare bones csv -- need to add metadata, and ideally clean up ddc_navx.
+
+
+appears to be no data for first model: this was a bug in the catalogue generator make_cat_nav.py, for lev=1: now fixed.
+
+
+Need to explain latitude, longitude
+e.g. AXES in DATA field, amd 1st col, lat, 1st row,long somewhere
+check format spec. again.
+
+
+would like to work out why restful path (below) partially works: it loads the page, but links don't work.
+http://www-devel.ipcc-data.org/cgi-bin/ddc_nav/IY=181/IX=361/xy=Latitude-Longitude+grid/YY=++0.000/XX=++0.000/Variable=tmp/Slice=1931-1940/Display_mode=ts/dataset=cru21
+OA

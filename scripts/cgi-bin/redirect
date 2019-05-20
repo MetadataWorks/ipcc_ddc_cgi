@@ -1,0 +1,34 @@
+#!/usr/bin/python
+
+tmpl = '''Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Your Page Title</title>
+<meta http-equiv="REFRESH" content="0;url=%(url)s"></HEAD>
+<BODY>
+Redirecting to %(url)s
+</BODY>
+</HTML>'''
+
+
+import cgi
+
+form = cgi.FieldStorage()
+
+debug = False
+if form.has_key('newurl'):
+  url = form['newurl'].value
+  if debug:
+    print '''
+
+%(url)s
+''' % locals()
+  else:
+    print tmpl % locals()
+else:
+  print '''
+
+
+ERROR'''

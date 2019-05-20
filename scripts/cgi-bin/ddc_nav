@@ -1,0 +1,412 @@
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys
+
+import utils, traceback
+import navtabm
+import socket
+
+def getShelveDir():
+  host = socket.gethostname()
+  if host == 'phobos':
+    shelveDir = '/var/www/ipccddc_devel/shelves/'
+  elif host == 'jddc1.ceda.ac.uk':
+    shelveDir = 'shelves/'
+  else:
+    shelveDir = '/tmp/shelves/'
+  return shelveDir
+
+shelveDir = getShelveDir()
+email = 'anon'
+
+class dummy_request:
+
+  def __init__(self):
+    self.fields = {}
+
+try:
+  o1 = open( '/tmp/downl_l3f.txt', 'w' )
+except:
+  o1 = open( '/tmp/downl_l3x.txt', 'w' )
+ 
+try:
+  import utils
+  rq = utils.classRequest()
+  cgiMode = True
+  typ = rq.prep()
+  o1.write( rq.path_info + '\n' )
+  path = string.strip( rq.path_info, '/' )
+  relative_path = rq.relative_path
+except:
+  cgiMode = False
+  path = sys.argv[1]
+  relative_path = 'relative_path'
+
+def cget(rq,id,default):
+  if rq.fields.has_key( id ):
+    return rq.fields[id].value
+  else:
+    return default
+
+## modified
+##typ = rq.prep()
+
+tar_gcm_htxt = '''The GCM climatologies are identified by 5 fields.
+Use the buttons below to select or change fields.
+When a climatology has been chosen, you will be able to browse the data.
+<a href="http://www.ipcc-data.org/sim/gcm_clim/SRES_TAR" target="tar_gcm_data">Go to the TAR model output page for more information about the options listed (new window/tab).</a><br/>
+<a href="/cgi-bin/ddc_nav/dataset=cru21" target="nav_cru21">Navigate observational data (new window/tab),</a><br/>
+<a href="/cgi-bin/ddc_nav/dataset=ar4_gcm" target="nav_ar4_gcm">Navigate AR4 climate model data (new window/tab).</a>'''
+
+ar4_gcm_htxt = '''The GCM climatologies are identified by 5 fields.
+Use the buttons below to select or change fields.
+When a climatology has been chosen, you will be able to browse the data.
+<a href="http://www.ipcc-data.org/sim/gcm_clim/SRES_AR4" target="ar4_gcm_data">Go to the model output page for more information about the options listed (new window/tab).</a><br/>
+<a href="/cgi-bin/ddc_nav/dataset=cru21" target="nav_cru21">Navigate observational data (new window/tab),</a><br/>
+<a href="/cgi-bin/ddc_nav/dataset=tar_gcm" target="nav_tar_gcm">IPCC (2001) climate model data (new window/tab).</a>'''
+
+cru21_htxt= '''The observational climatologies are identified by 2 fields.
+Use the buttons below to select or change fields.
+When a climatology has been chosen, you will be able to browse the data.
+<a href="http://www.ipcc-data.org/observ/clim/cru_ts2_1.html" target="ar4_gcm_data">Go to the observational data page for more information about the options listed.</a><br/>
+<a href="/cgi-bin/ddc_nav/dataset=ar4_gcm" target="nav_ar4_gcm">IPCC AR4 (2007) climate model data (new window/tab),</a></br>
+<a href="/cgi-bin/ddc_nav/dataset=tar_gcm" target="nav_tar_gcm">IPCC TAR (2001) climate model data (new window/tab).</a>'''
+
+nav_table_header_dict = { 'tar_gcm':tar_gcm_htxt, 'ar4_gcm':ar4_gcm_htxt, 'cru21':cru21_htxt }
+
+o1.write( 'nav::xx \n' )
+
+header = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>%(title)s</title>
+<link rel="stylesheet" media="screen" type="text/css" href="/css/download.css" />
+<style type="text/css">
+td.set {background: #aaffaa;}
+th.set {background: #bbffbb;}
+td.unset {background: #aaaaff;}
+th.unset {background: #bbbbff;}
+td.defaulting {background: #dddddd;}
+th.defaulting {background: #dddddd;}
+</style>
+</head>
+<body>"""
+
+def log_request( id ):
+  import time
+  host = socket.gethostname()
+  if host == 'phobos':
+    oo = open( '/var/www/ipccddc_devel/cgi_log/ddc_nav_log.txt', 'a' )
+  else:
+    oo = open( '/tmp/cgi_log/ddc_nav_log.txt', 'a' )
+  oo.write( '%s -- %s\n' % (id, time.ctime()) )
+  oo.close()
+  
+
+
+title = 'Navigator'
+datasetID = 'tar_gcm'
+datasetID = 'ar4_gcm'
+datasetID = 'cru21'
+
+try:
+  xx = 'starting'
+  p = path
+  bits = string.split( p, '/' )
+  o1.write( 'path = %s \n' % path )
+
+  for b in bits:
+    bb = string.split(b, '=' )
+    if bb[0] in ['dataset']:
+       datasetID = bb[1]
+
+  flistd = { 'tar_gcm':['Model','Expt','Variable','Slice','Type'],
+             'ar4_gcm':['Model','Expt','Ens','Variable','Slice'],
+             'cru21':['Variable','Slice'] }
+
+  o1.write( 'cgi mode %s\n' % cgiMode )
+  if cgiMode:
+    nrq = utils.navrq( o1, rq, path, flistd, [('display_mode',0)], {'display_mode':['xy','ts']} )
+    set = nrq.set
+    setvals = nrq.setvals
+    deflt = nrq.deflt
+    display_mode = nrq.ee.get('display_mode','xy')
+  else:
+    set = []
+    rq = dummy_request()
+    setvals = []
+    deflt = []
+    for i in range( len(sys.argv[2:] )/2 ):
+      set.append( sys.argv[2+i*2] )
+      setvals.append( sys.argv[3+i*2] )
+    display_mode = 'ts'
+
+  xx += 'setting mime\n'
+  mime = nrq.ff.get( 'mime','html' )
+  datasetID = nrq.ff.get( 'dataset','cru21' )
+  flist = flistd[datasetID]
+
+  o1.write( 'cgi mode %s\n' % cgiMode )
+
+  title = 'File navigator'
+
+  xx += 'set:: %s\n' % str(set)
+    
+  if datasetID == 'ar4_gcm':
+    import shelve
+    sh = shelve.open( shelveDir + 'ar4_v2_categories', 'r' )
+    ff = sh['ff'][:]
+    sh.close()
+    cwdths = ['15','15','15','40','15']
+  elif datasetID == 'tar_gcm':
+    import shelve
+    sh = shelve.open( shelveDir + 'tar_v2_categories', 'r' )
+    ff = sh['ff'][:]
+    sh.close()
+    cwdths = ['15','10','50','15','10']
+  else:
+    ff = [['cld', 'dtr', 'frs', 'pre', 'tmn', 'tmp', 'tmx', 'vap', 'wet'] ]
+    cwdths = ['33','34','33']
+    gg = []
+    for i in range(10):
+      gg.append( '%s-%s' % ( 1901 + 10*i, 1910 + 10*i ) )
+    for i in range(3):
+      gg.append( '%s-%s' % ( 1901 + 30*i, 1930 + 30*i ) )
+    ff.append(gg)
+      
+  xx += 'setting fileCounts\n'
+  fileCounts = False
+  if len(set) > 0 and len(set) < 5:
+      key = string.join( setvals, '_' )
+      if datasetID == 'ar4_gcm':
+        try:
+          sh = shelve.open( shelveDir + 'ar4_v2_navb_%s' % len(set), 'r' )
+        except:
+          sh = shelve.open( shelveDir + 'ar4_v2_nav_%s' % len(set), 'r' )
+        if sh.has_key(key):
+          olist = sh[key][:]
+          if sh.has_key( 'fileCounts' ):
+            fileCounts = sh['fileCounts'][key]
+        else:
+          raise 'invalid key'
+        sh.close()
+      elif datasetID == 'tar_gcm':
+        sh = shelve.open( shelveDir + 'tar_v2_navb_%s' % len(set), 'r' )
+        if sh.has_key(key):
+          olist = sh[key][:]
+          if sh.has_key( 'fileCounts' ):
+            fileCounts = sh['fileCounts'][key]
+        else:
+          raise 'invalid key'
+        sh.close()
+      else:
+          olist = ff[:]
+  else:
+      olist = ff[:]
+
+  xx += 'olist:: %s\n' % str(olist)
+  unset = []
+  uopt = []
+  for f in flist:
+     if f not in set:
+         if len(olist[flist.index(f)]) > 1:
+           unset.append(f)
+         else:
+           uopt.append(f)
+
+  lm = len(set) - 1
+  stab = len(set) > 0 and len(unset) > 0
+
+  xx += '-> get_navtab\n'
+  o1.write( '-> to get_navtab' )
+  navtab = '????'
+  try:
+    navtab = navtabm.get_navtab(o1,ff,flist,olist,lm,set,unset,uopt,setvals,display_mode,datasetID=datasetID,widths=cwdths,deflt=deflt)
+    ## navtab += 'olist:: %s\n' % str(olist)
+  except:
+    o1.write( '-> failed in get_navtab' )
+    xx += '-> failed in get_navtab\n =====================================================\n'
+    xx += traceback.format_exc()
+    xx += '\n =====================================================\n'
+    traceback.print_exc(file=o1)
+    raise
+  o1.write( '--  done \n' )
+  o1.write( ': navtab:: %s \n' % navtab )
+
+  headerWritten = False
+  htmlPage =  "Content-type: %s\n\n" % 'text/html' 
+  htmlPage += header % locals() 
+  debug = False
+  if len(set) > 0 and debug:
+    htmlPage += '<ul>\n' 
+    for s in set:
+      htmlPage += '<li>%s=%s</li>\n' % (s,setvals[set.index(s)]) 
+    htmlPage += '</ul>\n' 
+
+  if debug:
+    for f in uopt:
+      htmlPage += 'Single option: %s=%s<br/>\n' % (f, olist[flist.index(f)][0]) 
+
+  htmlPage += '<form>\n'
+  o1.write( 'len unset %s\n' % len(unset) )
+
+  if len(unset) == 0:
+    try:
+      log_request( rq.remote_address )
+      ddcfok = False
+      fv = ['a','a','a','a','a']
+      for s in set:
+        fv[flist.index(s)] = setvals[set.index(s)]
+      for s in uopt:
+        fv[flist.index(s)] = olist[flist.index(s)][0]
+
+      import ncb_mod as nm
+      if datasetID == 'ar4_gcm':
+        path = 'ar4_nc/%s/%s.nc' % (fv[3],string.join( fv, '_' ))
+      elif datasetID == 'tar_gcm':
+        path = 'sres/%s_%s/%s.nc' % (string.lower(fv[0]),string.lower(fv[1]),string.join( fv, '_' ))
+      else:
+        if fv[1] in ['1901-1930','1931-1960','1961-1990']:
+          stag = '30'
+        else:
+          stag = '10'
+        path = 'cru%s_nc/%s/cru_%s_clim_%s.nc' % (stag,fv[0],fv[0],fv[1])
+
+      o1.write( 'trying to open %s\n' % path )
+      ddcf = nm.ncb_open( path, fh=o1 )
+      ddcfok=True
+      if not ddcf.found:
+        htmlPage += '<br/><b> %s not found</b><br/>' % path
+    except:
+      traceback.print_exc(file=o1)
+      htmlPage += 'failed to open file (using ncb_mod)'
+
+    o1.write( 'ddcfok %s\n' % ddcfok )
+    if ddcfok:
+     try:
+      xx = 'xxyy:: ' + display_mode
+      var = setvals[ set.index( 'Variable' ) ]
+      if display_mode == 'xy':
+        xx += '1'
+        o1.write( '-> to get_ascii_xy' )
+        (rv,mess,tab,html) = ddcf.get_ascii_xy(rq, variable=var,mime=mime)
+        xx += '1'
+        o1.write( '   done\n' )
+        o1.write( html )
+        method = 'ddcf.get_ascii_xy(rq, variable=var)'
+      else:
+        
+        o1.write( '-> get_ascii_ts' )
+        (rv,mess,tab,html) = ddcf.get_ascii_ts(o1,rq,tslice=fv[flist.index('Slice')], variable=var, mime=mime)
+        method = "ddcf.get_ascii_ts(rq,tslice=fv[flist.index('Slice')])"
+
+      xx += 'xx'
+      startYear, startMonth, startDay, endYear =  ddcf.get_time_info()
+      xx += 'xx'
+      if rv != 0:
+        htmlPage += 'error return from %s<br/>' % method
+        htmlPage += '%s<br/>' % mess
+        htmlPage += '=================<br/>'
+        htmlPage += '%s<br/>' % tab
+        htmlPage += '=================<br/>'
+        htmlPage += '%s<br/>' % html
+        htmlPage += '%s<br/>' % path
+        htmlPage += '<br/>file::   %s<br/>' % ddcf.ddd.this_file
+
+      if mime == 'html' or rv != 0:
+        if int(startYear) < 300:
+          htmlPage += '<h1>Climatology, year %s to %s</h1>\n' % (startYear, endYear)
+        else:
+          htmlPage += '<h1>Climatology, %s to %sAD</h1>\n' % (startYear, endYear)
+
+        xx += 'xx'
+        if display_mode == 'ts':
+          htmlPage += '<h2>Location selection</h2>\n'
+        else:
+          htmlPage += '<h2>Time and location selection</h2>\n'
+
+        htmlPage += tab 
+        xx += 'xx'
+
+        htmlPage += '<h2>Data table</h2>\n'
+
+        htmlPage += '<input type="submit" name="mimeCSV" value="Download as csv spreadsheet"/>'
+
+        xx += '<br/> adding html<br/>'
+
+        htmlPage += html
+        sys.stdout.write( htmlPage )
+        headerWritten = True
+      else:
+        htmlPage = "Content-type: %s\n" % ('text/csv')
+        htmlPage +=  "Content-Disposition: attachment; filename=%s\n\n" % 'ddc_nav.csv'
+        try:
+          htmlPage +=  "%s" % (ddcf.csv_header)
+          o1.write( '\n\n' + ddcf.csv_header )
+        except:
+          o1.write( 'no csv header written' )
+        htmlPage +=  "%s" % (html) 
+        sys.stdout.write( htmlPage )
+     except:
+      sys.stdout.write( 'failed to get html' )
+      traceback.print_exc(file=o1)
+      sys.stdout.write( xx )
+      try:
+        sys.stdout.write( '<br/>%s<br/>' % path )
+      except:
+        sys.stdout.write( 'failed to write path' )
+  else:
+     hf = ''
+     for id in ['XX','YY','XX0','YY0','XX9','YY9']:
+       if rq.fields.has_key( id ):
+          hf += '<input type="hidden" name="%s" value="%s"/>\n' % (id,rq.fields[id].value)
+     if hf != '':
+       htmlPage += hf
+
+  o1.write( 'mime = %s\n' % mime )
+  if mime == 'html':
+    if not headerWritten:
+      sys.stdout.write( htmlPage )
+      o1.write( 'header written late\n' )
+
+
+    htmlx = '<h2>File navigation</h2>\n'
+
+    nav_table_header_text = nav_table_header_dict[datasetID]
+    htmlx +=  '%s\n' % nav_table_header_text
+    xx = 'xx<br/>'
+    htmlx +=  navtab
+    xx += 'xx<br/>'
+    htmlx +=  '</form>\n'
+
+    xx += 'xx<br/>'
+    if fileCounts:
+      htmlx +=  '<b>%s,%s</b>' % fileCounts
+    xx += 'xx<br/>'
+    ##for k in nrq.ff.keys():
+       ##sys.stdout.write( '%s:: %s\n' % (k,str(nrq.ff[k])) )
+    htmlx += '''
+<!-- start of google tracker script -->
+<script type="text/javascript">
+  var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+  document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+  var pageTracker = _gat._getTracker("UA-5141437-1");
+  pageTracker._initData();
+  pageTracker._trackPageview();
+</script>
+<!-- end of google tracker script -->'''
+    htmlx +=  '\n</body>\n</html>\n'
+    sys.stdout.write( htmlx )
+    o1.write( 'nearly done' )
+except:
+    sys.stdout.write( '\n\n Error writing error page\n' )
+    try:
+      sys.stdout.write( navtab )
+    except:
+      sys.stdout.write( 'cant write navtab' )
+      
+    sys.stdout.write( xx )
+
+o1.write( 'done' )
+o1.close()

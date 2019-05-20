@@ -1,0 +1,23 @@
+<table border="5px">
+<tr>
+<td class="aa" colspan="2">Use the boxes below to alter the location viewed</td>
+</tr>
+<tr>
+<td>%(y_label)s</td>
+<td>
+<select class="field" name="IY" style="width:85pt;height:20pt">
+   %(y_options)s
+</select>
+</td>
+</tr>
+<tr>
+<td>%(x_label)s</td>
+<td>
+<select class="field" name="IX" style="width:85pt;height:20pt">
+   %(x_options)s
+</select>
+</td>
+</tr>
+</table>
+
+<input type="submit" name="forwardbutton" value="Submit"/>

@@ -1,0 +1,135 @@
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys
+
+email = 'anon'
+
+class classRequest:
+
+    def __init__(self):
+
+        self.env            = os.environ
+
+        self.fields         = cgi.FieldStorage()
+        self.path_info      = self.env.get("PATH_INFO", "/")
+        self.relative_path  = self.path_info.strip("/")
+        self.method         = self.env.get("REQUEST_METHOD", "")
+        self.query          = self.env.get("QUERY_STRING", "")
+        self.remote_address = self.env.get("REMOTE_ADDR", "")
+        self.cookie         = self.env.get("HTTP_COOKIE", None)
+
+        self.if_modified_since = self.env.get("HTTP_IF_MODIFIED_SINCE", None)
+        self.if_none_match     = self.env.get("HTTP_IF_NONE_MATCH", None)
+
+
+        
+cook = None
+rq = classRequest()
+
+typ = 'first'
+
+if rq.fields.has_key( 'ddc-regis' ):
+  if rq.fields['ddc-regis'].value == 'sending':
+    typ = 'self'
+
+message = ''
+## look for referer for 'back to referer' link
+if rq.fields.has_key("http-referer"):
+  referer = rq.fields["http-referer"].value
+else:
+  try:
+    referer = os.getenv('HTTP_REFERER' )
+  except:
+    referer = '/'
+
+user_accnt_dir = '/var/www/ipccddc_devel/user_accnt/'
+user_hist_dir = '/var/www/ipccddc_devel/user_hist/'
+    
+
+## if submitted, check form values
+if typ == 'self':
+  atr = None
+  if rq.fields.has_key( 'accept-terms-r' ):
+    atr = True
+
+  if atr != None:
+    typ = 'reg'
+    email = 'def'
+    name = 'def'
+    description = 'def'
+    if rq.fields.has_key( 'xxxxx' ):
+      email = rq.fields['xxxxx'].value
+
+    if rq.fields.has_key( 'name' ):
+      name = rq.fields['name'].value
+
+    if rq.fields.has_key( 'description' ):
+      description = rq.fields['description'].value
+
+    email = string.replace(email,'/','__' )
+    name = str(name)
+## save account details
+    oo = open( '%s%s' % (user_accnt_dir, email), 'w' )
+    oo.write( '%s\n' % email )
+    oo.write( '%s\n' % name )
+    oo.write( '%s\n' % description )
+    oo.close()
+    import time
+    import Cookie
+## set expiry time one year in future
+    expi = time.asctime( time.gmtime(time.time() + 3600*24*365 ) )
+    b = string.split( expi )
+    expires = '%s, %s-%s-%s %s GMT' % (b[0], b[2], b[1], b[4], b[3] )
+    cook = Cookie.Cookie( 'ddc' )
+    name = string.replace( name, ':', '-' )
+    email = string.replace( email, ':', '-' )
+    cook['ddc-download'] = 'download-request:%s:%s' % (email,name)
+    cook['ddc-download']['expires'] = expires
+    cook['ddc-download']['path'] = '/cgi-bin/regis'
+
+    if string.find( email, '@' ) == -1:
+      typ = 'error'
+      message = '''<font color="red">Please enter a valid email address</font>'''
+
+  else:
+    typ = 'error'
+    message = '''<font color="red">In order to reegister, you must accept the terms and conditions</font>'''
+
+
+if rq.cookie != None:
+  cks = string.split( rq.cookie, ';' )
+  cook_val = 'xxx'
+  for c in cks:
+    this_cook_val = string.strip(string.split( c, '=', maxsplit=1 )[-1], '"')
+    cook_name = string.strip(string.split( c, '=', maxsplit=1 )[0] )
+    ##message += c + ':' + cook_name + '::'
+    if cook_name == 'ddc-download':
+      cook_val = this_cook_val
+
+  bits = string.split( cook_val, ':' )
+  
+  if len(bits) == 3:
+    email = bits[1]
+    name = bits[2]
+    if os.path.isfile(user_accnt_dir+email):
+      message += 'looks like you have registered'
+      typ = 'registered'
+
+
+
+if typ in ['first', 'error']:
+  html = open( 'regis_text.txt', 'r' ).readlines()
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+
+  if cook != None:
+      sys.stdout.write( str(cook.output()) + '\n' )
+  sys.stdout.write( '\n' )
+  
+  title = 'IPCC DDC: Registration'
+  path = rq.path_info
+  sys.stdout.write( string.join( html, '\n' )  % locals() )
+else:
+  html = open( 'regis_thanks.txt', 'r' ).readlines()
+  title = 'IPCC DDC: Registration'
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+  sys.stdout.write( '\n' )
+  sys.stdout.write( string.join( html, '\n' )  % locals() )

@@ -1,0 +1,136 @@
+#!/usr/bin/python
+import Cookie, os, cgi, string, sys, time
+
+email = 'anon'
+
+class classRequest:
+
+    def __init__(self):
+
+        self.env            = os.environ
+
+        self.fields         = cgi.FieldStorage()
+        self.path_info      = self.env.get("PATH_INFO", "/")
+        self.relative_path  = self.path_info.strip("/")
+        self.method         = self.env.get("REQUEST_METHOD", "")
+        self.query          = self.env.get("QUERY_STRING", "")
+        self.remote_address = self.env.get("REMOTE_ADDR", "")
+        self.cookie         = self.env.get("HTTP_COOKIE", None)
+
+        self.if_modified_since = self.env.get("HTTP_IF_MODIFIED_SINCE", None)
+        self.if_none_match     = self.env.get("HTTP_IF_NONE_MATCH", None)
+        self.email = ""
+        self.referer = ""
+        self.name = ""
+
+    def prep(self):
+      typ = 'first'
+
+
+ 
+rq = classRequest()
+
+
+base_dir = '/var/www/ipccddc_devel/rate/'
+    
+o1 = open( '/tmp/pr_l1.txt', 'w' )
+o1.write( 'pr::  3\n' )
+
+
+o1.write( rq.path_info )
+o1.write( '\n\n' )
+
+
+htmlpat = '''
+<html>
+<head>
+<META HTTP-EQUIV="Refresh"
+      CONTENT="%(delay)s; URL=%(url)s">
+</head>
+<body>
+
+<center style="font-size:xx-large;">
+Thankyou for your input.
+</center>
+
+%(verbose_content)s
+
+<br/>
+Your browser should return you to the previous URL in %(delay)s second%(delay_plural)s:
+<a href="%(url)s">%(url)s</a>.
+</body>
+</html>
+'''
+
+verbose = 0
+if verbose == 0:
+  verbose_content = ''
+else:
+  verbose_content = '''<br/>
+page: %(page)s<br/>
+Goal: %(goal)s<br/>
+Rate: %(rate)s<br/>
+Host: %(host)s'''
+
+if rq.fields.has_key('goal'):
+  goal = rq.fields['goal'].value
+else:
+  goal = -1
+
+if rq.fields.has_key('Rating'):
+  rate = rq.fields['Rating'].value
+else:
+  rate = -1
+
+page = rq.path_info
+
+page = string.strip( page, '/' )
+
+host = rq.remote_address
+
+url = '/' + page
+delay = 1
+delay_plural = ''
+if delay > 1:
+  delay_plural = 's'
+
+
+ofile = base_dir + string.replace( url, '.html','_rate.txt' )
+
+
+ctime = time.ctime()
+
+o1.write( '%s\n' % ofile )
+o1.write( '%(rate)12s;; %(host)s;; %(ctime)s\n' % locals() )
+if verbose != 0:
+  verbose_content = verbose_content % locals()
+
+o1.write( verbose_content )
+
+bits = string.split( page, '/' )
+if len(bits) > 1:
+  o1.write( '\n trying [1] to make directory %s \n' % bits[0] )
+  if not os.path.isdir( base_dir + bits[0] ):
+    o1.write( '\n trying to make directory %s \n' % bits[0] )
+    os.mkdir(  base_dir + bits[0]  )
+## log rating
+if os.path.isfile( ofile ):
+  oo = open( ofile, 'a' )
+else:
+  oo = open( ofile, 'w' )
+oo.write( '%(rate)12s;; %(host)s;; %(ctime)s\n' % locals() )
+oo.close()
+##
+
+o1.write( '\nofile written\n' )
+o1.close()
+try:
+  html = htmlpat % locals()
+  sys.stdout.write( "Content-type: %s\n" % 'text/html' )
+  sys.stdout.write( '\n' )
+  sys.stdout.write( '\n' )
+  sys.stdout.write( html )
+except:
+    sys.stdout.write( '\n\n File not found: + error writing error page\n' )
+
+o1.close()

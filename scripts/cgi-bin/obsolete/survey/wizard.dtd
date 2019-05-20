@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Maciej Blizinski <m.blizinski@wsisiz.edu.pl>
+	Wizard definition document definition
+-->
+<!ELEMENT wizard (title, introduction, dataToBeCollected, whenFilledProperly, wizardInfo)>
+<!ELEMENT title (#PCDATA)>
+<!ELEMENT introduction ANY>
+
+<!-- Data to be collected -->
+<!ELEMENT dataToBeCollected (wizardScreen+)>
+<!ATTLIST dataToBeCollected tablename CDATA #REQUIRED>
+<!ELEMENT wizardScreen (screenName, comment?, dataFields, dataField?, input*)>
+<!ATTLIST wizardScreen screencode CDATA #REQUIRED>
+<!ELEMENT screenName (#PCDATA)>
+<!ELEMENT comment (#PCDATA)>
+<!ELEMENT input (script)>
+<!ELEMENT script (#PCDATA)>
+<!ELEMENT a (#PCDATA)>
+<!ELEMENT dataFields (comment?, dataField+)>
+<!ELEMENT dataField (dataFieldComment?, fieldLabel, fieldExtendedInfo?, widget)>
+<!ATTLIST dataField  datatype    CDATA    #REQUIRED
+                     mandatory   (yes|no) #IMPLIED
+                     >
+<!ATTLIST a  href    CDATA    #REQUIRED
+                     >
+<!ATTLIST input  type    CDATA    #REQUIRED
+                 name    CDATA #REQUIRED
+                     >
+<!ATTLIST script  type    CDATA    #REQUIRED
+                  language    CDATA #REQUIRED
+                     >
+<!ELEMENT fieldLabel (#PCDATA)>
+<!ELEMENT fieldExtendedInfo (#PCDATA)>
+<!ELEMENT dataFieldComment (#PCDATA)>
+
+<!-- widget -->
+<!ELEMENT widget (value|widgetDictionary|scrin)>
+<!ATTLIST widget  name  CDATA                        #REQUIRED
+                  type  (chooser|text|features|area|radio|hidden-java) #REQUIRED
+                  cols CDATA   "60"
+                  rows CDATA   "4"
+                  onchange CDATA   "null"
+                  mandatory CDATA   "no"
+                  vertical CDATA  "no"
+                  valid     (yes|no) "yes"
+                  >
+<!ELEMENT widgetDictionary (dictionaryEntry+)>
+<!ELEMENT dictionaryEntry (code, display)>
+<!ATTLIST dictionaryEntry selected (yes|no) #IMPLIED>
+<!ATTLIST dictionaryEntry checked (yes|no) #IMPLIED>
+<!ATTLIST dictionaryEntry xxchecked (yes|no) #IMPLIED>
+<!ELEMENT code (#PCDATA)>
+<!ELEMENT display (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- when filled properly -->
+<!ELEMENT whenFilledProperly (heading, message)>
+<!ELEMENT heading (#PCDATA)>
+<!ELEMENT font ANY>
+<!ATTLIST font color CDATA "black">
+<!ELEMENT i ANY>
+<!ELEMENT br ANY>
+<!ELEMENT message ANY>
+<!ELEMENT scrin ANY>
+<!ATTLIST scrin  type  CDATA       #REQUIRED
+                 language  CDATA #REQUIRED
+                 jtype  CDATA #REQUIRED
+                 java_cmd CDATA   "java"
+                 value    CDATA   "java"
+                  >
+
+<!-- extras -->
+<!ELEMENT wizardInfo (id?, lastUpdated?)>
+<!ELEMENT lastUpdated (#PCDATA)>
+<!ELEMENT id (#PCDATA)>

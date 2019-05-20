@@ -1,0 +1,25 @@
+#!/usr/bin/env tclsh
+
+# Intermediate script to catch and report errors from actual script
+
+set home ddcvis_home
+
+cd $home
+
+set rc [catch {
+  set f [open "|./despatcher $argv" r]
+  fconfigure $f -encoding binary
+  fconfigure $f -translation binary
+  set out [read $f]
+  close $f
+} err]
+
+if {$rc==0} {
+  fconfigure stdout -encoding binary
+  fconfigure stdout -translation binary
+  puts -nonewline $out
+} else {
+  puts "Content-type: text/html\n\n"
+  puts "<b>Error code from despatcher: $rc</b><p>"
+  puts $err
+}

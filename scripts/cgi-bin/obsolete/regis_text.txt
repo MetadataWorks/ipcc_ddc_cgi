@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>%(title)s</title>
+<link rel="stylesheet" media="screen" type="text/css" href="/css/download.css" />
+</head>
+<body>
+
+<h1>%(title)s</h1>
+
+
+%(message)s
+
+<center>
+<form method="POST">
+<table border="5px">
+<tr>
+<td class="aa">Please fill out the form below to register</td>
+</tr>
+<tr>
+<td class="aa">
+
+We would like to be able to:
+<ul>
+<li> contact you about any significant 
+changes to the service we provide (up to once every 6 months);</li>
+<li> provide statistics on usage to our funders</li>
+</ul>
+To assist us please enter your email address here:
+
+<input type="text" name="xxxxx" value="" size="36"/>
+<br/>
+Name: <input type="text" name="name" value="" size="36"/>
+<br/>
+A brief description of your interest in the data:
+<textarea name="description" rows="10" cols="70"></textarea>
+
+<br/>
+<input id="radios" type="checkbox" name="accept-terms-r" value="registered"/>
+Check here to confirm that you have read and accepted
+the <a href="/ddc_registered-download_terms.html" target="_blank">terms and conditions</a>.
+
+<br/>
+<input id="radios" type="checkbox" name="contactable" value="no"/>
+Check here if you do not want to receive any emails from us.
+<br/>
+</td>
+</tr>
+</table>
+
+<input id="radios" type="radio" name="cookie" value="post-cookie" CHECKED/><label class="radios" for="cookie">Set a cookie to remember this decision for one year</label>
+<br/>
+<input id="radios" type="radio" name="cookie" value="no-cookie"/><label class="radios" for="cookie">Repeat the question next time I request a file</label>
+
+<br/>
+
+<input type="submit" name="forwardbutton" value="Register"/>
+<input type="hidden" name="ddc-regis" value="sending"/>
+<input type="hidden" name="http-referer" value="%(referer)s"/>
+</form>
+<br/>
+<a href="%(referer)s">Return to previous page</a>
+</center>
+
+</body>
+</html>

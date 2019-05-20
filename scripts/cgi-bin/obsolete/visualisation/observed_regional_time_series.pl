@@ -1,0 +1,228 @@
+#!/usr/bin/perl
+
+# Perl script to take a slice of the data for a particular time scale over
+# particular months for a particular region.
+
+$| = 1;
+
+use CGI qw/:standard/;
+#use CGI::FastTemplate;
+#use URI::Escape;
+
+my $query = new CGI;
+
+print $query->header(-type => "text/plain");
+
+my %variables = (
+	"tmp", "tmp",
+	"tmx", "tmx",
+	"tmn", "tmn",
+	"dtr", "dtr",
+	"pre", "pre",
+	"vap", "vap",
+	"cld", "cld",
+	"wnd", "wnd",
+	"rad", "rad",
+	"wet", "wet",
+	"frs", "frs"
+);
+
+my %descriptions = (
+	"tmp","Mean temperature (°C)", 
+	"tmx","Maximum temperature (°C)", 
+	"tmn","Minimum temperature (°C)", 
+	"dtr","Diurnal temperature (°C)", 
+	"pre","Precipitation (mm/day)", 
+	"vap","Vapour pressure (hPa)", 
+	"cld","Cloud cover (%)", 
+	"wnd","Wind speed (m/s)", 
+	"rad","Global radiation (W/m2)", 
+	"wet","Wet days (days/month)", 
+	"frs","Frost days (days/month" 
+);
+
+my %months = ("January"=>0, "February"=>1, "March"=>2, "April"=>3, "May"=>4, "June"=>5, "July"=>6, "August"=>7, "September"=>8, "October"=>9, "November"=>10, "December"=>11);
+
+my $monthlen = 20736;
+my $yearlen = 12 * $monthlen;
+my $resolution = 2.5;
+my $topx = $query->param('bottomx');
+my $topy = $query->param('bottomy');
+my $bottomx = $query->param('topx');
+my $bottomy = $query->param('topy');
+my $numsquares = 1;
+my $startmonth = $query->param('startmonth');
+my $endmonth = $query->param('endmonth');
+my $startyear = $query->param('startyear');
+$startyear = int $startyear;
+my $endyear = $query->param('endyear');
+$endyear = int $endyear;
+my $variable = $query->param('variable');
+$variable = $variables{$variable};
+print "$descriptions{$variable} anomalies from 1901 to 1995 for the months $startmonth to $endmonth \n";
+print "$bottomy to $topy deg. latitude \t$bottomx to $topx deg. longitude\n";
+print "Units are x 10 except for cloud cover and radiation.\n";
+
+$startmonth = $months{$startmonth};
+$endmonth = $months{$endmonth};
+
+print STDERR "Dataset: ".$variable."\n";
+print STDERR "topx=$topx bottomx=$bottomx topy=$topy bottomy=$bottomy startmonth=$startmonth endmonth=$endmonth\n";
+
+$data_path = "/badc/ipcc-ddc/data/legacy/visualisation_data";
+#my $datafile = "/home/htdocs/observed/$variables{$variable}0195";
+my $datafile = "$data_path/observed/${variable}0195";
+
+if ( $startmonth > $endmonth ) {  
+    $startyear ++;
+    #$endyear ++;
+    $startmonth -= 12;
+}
+
+# Normalize the data, now we know where we are at. The data is stored from
+# -90 deg to 90 deg latitude and from 0 to 180 then -180 to 0 deg longitude
+# as we do not need to plot a world map, we cheat here! We take the coordinates 
+# as they should be (from -90 -> 90 deg longitude, -180 -> 180 deg latitude)
+# and convert them to -90 -> 90, 0 -> 360 here, or rather, to the more course
+# 144x72 grid that we have data for.
+
+$topx    +=180; # 180 or 360? depending how data is stored
+$bottomx +=180;
+$topx    %=360;
+$bottomx %=360;
+$topx    = int($topx / $resolution + 0.5);
+$bottomx = int($bottomx / $resolution + 0.5);
+$topy    += 90;
+$bottomy += 90;
+$topy    = int($topy / $resolution + 0.5);
+$bottomy = int($bottomy / $resolution + 0.5);
+
+$btmx[0] = $bottomx;
+$btmx[1] = $bottomx;
+$tpx[0]  = $topx;
+$tpx[1]  = $topx;
+
+# if longitude from -deg to +deg
+if ($bottomx > $topx)
+{
+    $btmx[0] = 0;
+    $tpx[1]  = 143;
+}
+print STDERR "btmx0=$btmx[0] btmx1=$btmx[1] tpx0=$tpx[0] tpx1=$tpx[1]\n";
+my $currentmonth = 0;
+$currentyear = 1;
+
+my $totalbytesprocessed = 0;
+my $monthdatalength = 20736;
+my $currentx = 0;
+my $currenty = 0;
+
+
+my $currentPosition = 0;
+my $data = "";
+my $bytesread = 0;
+
+
+#print STDERR "readlength = $readlength\n";
+$points_per_year = ($endyear - $startyear + 1) * ($endmonth - $startmonth + 1) * ($topy - $bottomy +1) * ($topx - $bottomx +1);
+
+print STDERR "Starting read loop at ".localtime()."\n";
+
+for (my $index = $startyear; $index <= $endyear; $index++) {
+	$yearlydata[$index] = 0;
+	$numberItems[$index] = 1;
+}
+
+open(DATA, "<$datafile")|| die "unable to open data file $datafile \n";
+binmode DATA;
+#Year loop
+for ($currentyear = $startyear; $currentyear <= $endyear ; $currentyear++)
+{
+   # print STDERR "Year $currentyear\n";
+    $numberItems[$currentyear] = 0;
+    $yearlydata[$currentyear]=0;
+
+    # Month loop
+    for ($currentmonth = $startmonth ; $currentmonth <= $endmonth ; $currentmonth++)
+    {
+        for (my $index=0 ; $index <=1; $index++){       #loop for bottomx > topx ie. range passes through 0 deg east
+            $readlength = 2* ($tpx[$index] - $btmx[$index] + 1);
+            $seekpoint = ($currentyear -1)* $yearlen + $currentmonth * $monthlen + 288*$bottomy + 2*$btmx[$index];
+            #print STDERR "\tMonth $currentmonth\tseekpoint = $seekpoint \n";
+           # print STDERR "yr=$currentyear\tylen=$yearlen\tmlen=$monthlen\tby=$bottomy\tbx=$btmx[$index]\n";
+	
+            $success = seek (DATA,$seekpoint,0);
+	    $tell = tell (DATA);
+	   # print STDERR "seek returned $success\t$tell\t";
+            # Y loop
+            for ($currenty = $bottomy ; $currenty <= $topy ; $currenty++ )
+            {
+            
+	        $tell = tell (DATA);       # For debugging
+               # print STDERR "\n\t\tLatitude $currenty\tfile postion = $tell\treadlength=$readlength\n";
+	        $data="";
+                read(DATA,$data, $readlength);
+                # must do something with the data here
+                &process_data ($data);
+
+                # skip to next y
+                seek(DATA,288 - $readlength,1);
+         
+            }   #End of Y loop
+            last if $topx >= $bottomx; # just go through once if region not crossing greenwich meridian
+	} # end of for (index) loop
+    }   #End of Month loop
+    if ($numberItems[$currentyear]!= 0 ){
+	($yearlydata[$currentyear] /= $numberItems[$currentyear]);
+    }
+    else {
+	($yearlydata[$currentyear] = -9999);
+    }
+	printf("%d,%2.1f\n",1900+$currentyear,$yearlydata[$currentyear]);
+	#printf(STDERR "%d,%2.1f\n",1900+$currentyear,$yearlydata[$currentyear]);
+
+}    # End of Year loop 
+
+close(DATA);
+
+print STDERR "Ending read loop at ".localtime()."\n";
+# calculate mean 1961-1990
+my $thirty_mean    = 0;
+my $thirty_total   = 0;
+my $numyears_61_90 = 0;
+for (my $yearcount = 61; $yearcount <= 90; $yearcount++){
+    if ($yearlydata[$yearcount] != -9999){
+	$thirty_total +=  $yearlydata[$yearcount];
+	$numyears_61_90 ++;
+    }
+}
+($numyears_61_90 == 0) || ($thirty_mean = $thirty_total/$numyears_61_90 );
+printf( "\nMean value 1961-90 = %2.1f\n",$thirty_mean);
+
+sub process_data
+{
+    my ($data1) = @_;
+    for ( my $count = 0;$count < $readlength / 2; $count++)
+    {
+
+        my ($part1, $part2) = $data1 =~ /^(.)(.).*/s;
+	$data1 =~ s/^..//s;
+        $part1 = ord($part1);
+        $part2 = ord($part2);
+	#print STDERR "part1 = $part1\tpart2=$part2\t count = $count\n";
+	my $thisdata = ($part2 << 8);
+	$thisdata += $part1;
+					
+	if ($thisdata >= 0x8000) {
+		$thisdata -= (0x8000 * 2);
+	}
+						
+	if ($thisdata != -9999) {
+		$yearlydata[$currentyear] += $thisdata;
+		$numberItems[$currentyear] += 1;
+		#print STDERR $numberItems[$currentyear]
+	}
+              # print STDERR $thisdata."\ ";
+     }
+}
+    

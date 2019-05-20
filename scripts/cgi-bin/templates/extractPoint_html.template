@@ -1,0 +1,20 @@
+<html>
+<body>
+
+<h1>Select point, file: %(fileName)s</h1>
+
+
+Enter latitude and longitude:
+[[will be rounded to the nearest grid point]
+
+
+Expand data selection:
+
+All scenarios, time periods and models for this variable
+[[ note that models have diffferent grid representations, so information
+will not be at exactly the same location]]
+
+All variables, and time periods for this model and scenario
+
+</body>
+</html>

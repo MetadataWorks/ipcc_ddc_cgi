@@ -1,0 +1,50 @@
+<table border="5px">
+<tr>
+<td class="aa" colspan="2">Use the boxes below to alter the region viewed.
+<br/> After selecting values, click on "Submit" below.</td>
+</tr>
+<tr>
+<td>Time period</td>
+<td>
+<select class="field" name="monthSeason" style="width:85pt;height:20pt">
+   %(time_options)s
+</select>
+</td>
+</tr>
+<tr>
+<td>%(end_y_label)s</td>
+<td>
+<select class="field" name="endY" style="width:85pt;height:20pt">
+   %(end_y_options)s
+</select>
+</td>
+</tr>
+<tr>
+<td>%(start_y_label)s</td>
+<td>
+<select class="field" name="startY" style="width:85pt;height:20pt">
+   %(start_y_options)s
+</select>
+</td>
+</tr>
+<tr>
+<td>%(end_x_label)s</td>
+<td>
+<select class="field" name="endX" style="width:85pt;height:20pt">
+   %(end_x_options)s
+</select>
+</td>
+</tr>
+<tr>
+<td>%(start_x_label)s</td>
+<td>
+<select class="field" name="startX" style="width:85pt;height:20pt">
+   %(start_x_options)s
+</select>
+</td>
+</tr>
+</table>
+
+<input type="submit" name="forwardbutton" value="Submit"/>
+<input type="hidden" name="ddc-regis" value="sending"/>
+<br/>

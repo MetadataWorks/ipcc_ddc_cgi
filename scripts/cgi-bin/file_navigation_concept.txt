@@ -1,0 +1,40 @@
+
+
+
+We have a substantial collection of data files which can, in princple be identified by a set of
+identifiers: dataset, model, scenario, variable, ensemble number, format, time period.
+
+Can this be presented in a way which does not expose a specific heirarchy?
+
+Practicalities: 
+(1) Suppose a user is presented with all the options for all the above N categories. He selects an element from one category, and gets new lists of options which are still available for N-1 categories, plus some information relevant to his selection. 
+
+
+cgi -- input:
+field=value
+
+(1) evaluate number of fields selected.
+(2) get navigation data from appropriate catalogue
+(3) generate page with options to select unseleted fields or unselect selected
+fields.
+
+
+
+currently, don't have a means of preserving region selection data while
+navigating around file criterea: the latter work as links, and do not post the 
+in form information. Could either set a cookie or put in URL. latter would get
+messy.
+
+
+two display modes can be switched, but not recorded as yet. COuld standardise
+some stuff between them,
+
+
+The "point" display option keeps latitude nearly fixed when moving between
+models, but other options deal with array indicies.
+Also done for longitude, needs to be implemented in domain.
+
+
+Need to add some links to help. Have started a categories.txt file in
+ancillary. This could be implement as links from table headings. There should
+also be some info on individual models in /wrk etc.

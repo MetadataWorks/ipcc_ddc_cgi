@@ -1,0 +1,46 @@
+#!/usr/bin/env tclsh
+
+proc error {text} {
+  puts "Content-type: text/html\n\n"
+  puts "<h1>IPCC-DDC Data Visualisations</h1>"
+  puts "Despatcher error:<blockquote>"
+  puts $text
+  puts {</blockquote>Please report this error to <a href="mailto:badc@badc.ac.uk">badc@badc.ac.uk</a>}
+  exit
+}  
+
+proc choose {requri} {
+  puts "Content-type: text/html\n\n"
+  puts "<h1>IPCC-DDC Data Visualisations</h1>"
+  puts "These visualisations are currently available:<ul>"
+  foreach vis {gcmcf} name {{GCM Change Fields}} {
+    puts "<li><a href=\"$requri/$vis\">$name</a>"
+  }
+  puts {</ul>}
+  ##puts [array get env]
+  exit
+}
+
+############### MAIN ###############
+
+if {![info exists env(PATH_INFO)]} {
+  choose $env(REQUEST_URI)
+}
+
+set pi $env(PATH_INFO)
+
+set which [lindex [split $pi /] 1]
+switch $which {
+  gcmcf {
+    cd gcmcf
+    source gcmcf.tcl
+  }
+  gcmcftest {
+    cd gcmcftest
+    source gcmcf.tcl
+  }
+  default {
+    choose /cgi-bin/ddcvis
+    error "Unknown switch \"$which\"<br>pi=$pi"
+  }
+}
