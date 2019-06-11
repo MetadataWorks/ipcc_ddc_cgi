@@ -18,3 +18,7 @@ The `ddc_nav` script provides a non-heierarchical browse interface for data coll
 ## query
 
 The `query` script simply provides a form through which users can submit a query.
+
+## obsolete
+
+Some obsolete scripts, retained for a while in case something has been overlooked.
