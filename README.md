@@ -9,6 +9,8 @@ The `downl` script is used to retrieve files from the archive. It has a primitiv
 
 http://apps.ipcc-data.org/cgi-bin/downl/ar4_nc/pr/GFCM21_1PTO2X_pr_oc20x.tar
 
+This script is linked to from tables such as the one on [IPCC 4th Assessment Report (2007): Model INM-CM3](http://www.ipcc-data.org/auto/ar4/model-INM-CM3.html)
+
 ## downl_form
 
 The `downl_form` script is for files requested through a form .. the script parses the form data and compiles a call to `downl`.
@@ -21,12 +23,16 @@ The `ddc_nav` script provides a non-heierarchical browse interface for data coll
 
 http://apps.ipcc-data.org/cgi-bin/ddc_nav/dataset=ar4_gcm
 
+Linked to from [Model output described in the 2007 IPCC Fourth Assessment Report (SRES scenarios), multi-year means](http://www.ipcc-data.org/sim/gcm_clim/SRES_AR4/index.html) (labelled as "DDC file navigator").
+
 ## query
 
 The `query` script simply provides a form through which users can submit a query.
 
 http://apps.ipcc-data.org/cgi-bin/query
 
+Linked to from [Technical Guidelines, Fact Sheets and other Supporting Material](http://www.ipcc-data.org/guidelines/index.html) (we should probably retire this one).
+
 ## obsolete
 
-Some obsolete scripts, retained for a while in case something has been overlooked.
+Some obsolete scripts, retained for a while in case something has been overlooked
