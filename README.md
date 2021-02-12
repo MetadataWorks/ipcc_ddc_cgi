@@ -9,6 +9,8 @@ The `downl` script is used to retrieve files from the archive. It has a primitiv
 
 http://apps.ipcc-data.org/cgi-bin/downl/ar4_nc/pr/GFCM21_1PTO2X_pr_oc20x.tar
 
+This URL should initiate the download of the archive file `/badc/ipcc-ddc/data/netcdf/ar4_v2/pr/GFCM21_1PTO2X_pr_oc20x.tar` . The mapping from short codes such as `ar4_nc` in the cgi call to folders in the archive is defined in the cgi script.
+
 This script is linked to from tables such as the one on [IPCC 4th Assessment Report (2007): Model INM-CM3](http://www.ipcc-data.org/auto/ar4/model-INM-CM3.html)
 
 ## downl_form
