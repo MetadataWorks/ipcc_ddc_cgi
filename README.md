@@ -25,7 +25,7 @@ http://apps.ipcc-data.org/cgi-bin/ddc_nav/dataset=ar4_gcm
 
 Linked to from [Model output described in the 2007 IPCC Fourth Assessment Report (SRES scenarios), multi-year means](http://www.ipcc-data.org/sim/gcm_clim/SRES_AR4/index.html) (labelled as "DDC file navigator").
 
-## query
+## query (to be removed from use)
 
 The `query` script simply provides a form through which users can submit a query.
 
