@@ -1,0 +1,42 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>%(title)s</title>
+<link rel="stylesheet" media="screen" type="text/css" href="/css/download.css" />
+<style>
+      ul {
+        list-style: none;
+      }
+</style>
+</head>
+<body>
+
+<h1>%(title)s</h1>
+
+
+%(message)s
+
+<form method="POST">
+
+<ul>
+<li><input id="radios" type="radio" name="accept-terms" value="anonymous"/>
+Check here to confirm that you have read and accepted
+the <a href="http://www.ipcc-data.org/ddc_anon-download_terms.html" target="_blank">terms and conditions for anonymous download</a>:
+and then click below for anonymous download.</li>
+<li><input id="radios" type="radio" name="cookie" value="post-cookie" CHECKED/><label class="radios" for="cookie">Set a cookie to remember this decision for one year</label></li>
+<li><input id="radios" type="radio" name="cookie" value="no-cookie"/><label class="radios" for="cookie">Repeat the question next time I request a file</label></li>
+</ul>
+
+<br/>
+
+<input type="submit" name="forwardbutton" value="Download"/>
+<input type="hidden" name="ddc-data-downl" value="sending"/>
+<input type="hidden" name="http-referer" value="%(referer)s"/>
+</form>
+<br/>
+<center>
+<a href="%(referer)s">Return to previous page</a>
+</center>
+
+</body>
+</html>
