@@ -65,11 +65,11 @@ kv = pparse( rq.path_info )
 typ = rq.prep()
 
 
-data_dir = '/usr/local/data/ipcc-ddc/data/netcdf/ar4_v2/'
+data_dir = '/data/netcdf/ar4_v2/'
 user_accnt_dir = '/var/www/ipccddc_devel/user_accnt/'
 user_hist_dir = '/var/www/ipccddc_devel/user_hist/'
-base_dir = '/usr/local/data/ipcc-ddc/data/'
-base_dir = '/badc/ipcc-ddc/data/'
+base_dir = '/data/'
+base_dir = '/data/'
 obase_dir = {'cru_ts_3.23_clim':'/badc/cru/data/'}
     
 o1 = open( '/tmp/downl_l1.txt', 'w' )
@@ -101,17 +101,21 @@ class ddc_file:
     self.message = ''
 
     oo.write( dataset_id + '\n' )
-    if dataset_id not in dsdd.keys():
+    if dataset_id not in dsdd.keys() and dataset_id != 'raw':
       oo.write( 'bad dataset_id: %s\n' % dataset_id )
       oo.close()
       raise 'bad dataset_id'
 
     bdir = obase_dir.get( dataset_id, base_dir )
-    self.dsdir = bdir + dsdd[ dataset_id ]
+    if dataset_id != 'raw':
+      self.dsdir = bdir + dsdd[ dataset_id ]
 
     oo.write( data_id + '\n' )
     dbits = string.split( data_id, '.' )
-    if len(dbits) == 3:
+    if dataset_id == 'raw':
+      self.file_name = data_id
+      self.action = None
+    elif len(dbits) == 3:
       if dbits[1] in ['cyto180','extractPoint']:
         self.action = dbits[1]
       else:
@@ -142,6 +146,8 @@ class ddc_file:
         self.data_dir = '%s%s/%s/%s' % (self.dsdir,fbs[3],fbs[0],fbs[1])
     elif dataset_id in ['cru_ts_3.23_clim',]:
       self.data_dir = self.dsdir + dataset_id
+    elif dataset_id == 'raw':
+      self.data_dir = bdir + '/'.join(bits[:-1])
     else:
       self.data_dir = self.dsdir + string.split( data_id, '_')[1]
     oo.write( 'data dir: ' + self.data_dir + '\n' )
@@ -300,6 +306,11 @@ except:
   sys.stdout.write( "Content-type: %s\n" % 'text/html' )
   sys.stdout.write( "Status: 404 Not Found\n\n" )
   sys.stdout.write( "Status: 404 Not Found\n\n" )
+#  message = '----ENV----<br/>\n'
+#  for at in dir(rq):
+#    message += at + ' : ' + str(getattr(rq, at, '')) + '<br>\n'
+#  message += '-----------<br/>\n'
+#  sys.stdout.write(message)
   o1.close()
   sys.exit(0)
 
