@@ -1,8 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<title>%(title)s</title>
-<link rel="stylesheet" media="screen" type="text/css" href="/css/download.css" />
+    <title>%(title)s</title>
+    <link rel="stylesheet" media="screen" type="text/css" href="/css/download.css" />
 </head>
 <body>
 
@@ -12,63 +19,24 @@
 %(message)s
 
 <center>
-<form method="POST">
-<table border="5px">
-<tr>
-<td class="a">Please Register</td><td></td><td class="c">Or</td>
-</tr>
-<tr>
-<td class="a">
+    <form method="POST">
+<table><tr><td><input id="radios" type="radio" name="accept-terms" value="anonymous"/>
+    Check here to confirm that you have read and accepted
+    the <a href="http://www.ipcc-data.org/ddc_anon-download_terms.html" target="_blank">terms and conditions for anonymous download</a>:
+    and then click below for anonymous download.</td></tr><tr><td><br/>
+    <input id="radios" type="radio" name="cookie" value="post-cookie" CHECKED/><label class="radios" for="cookie">Set a cookie to remember this decision for one year</label>
+    <br/>
+    <input id="radios" type="radio" name="cookie" value="no-cookie"/><label class="radios" for="cookie">Repeat the question next time I request a file</label>
 
-We would like to be able to:
-<ul>
-<li> contact you about any significant 
-changes to the service we provide (up to once every 6 months);</li>
-<li> provide statistics on usage to our funders</li>
-</ul>
-To assist us please enter your email address here:
+    <br/></td></tr></table>
 
-<input type="text" name="xxxxx" value="%(email)s" size="36"/>
-<br/>
-Name: <input type="text" name="name" value="%(name)s" size="36"/>
-<br/>
-A brief description of your interest in the data (please do not use this space
-to post queries, as it may not be reviewd for some time; for queries go to <a
-href="http://www.ipcc-data.org/ddc_help.html">our help page (no registration
-required)</a>:
-<textarea name="description" rows="10" cols="70">%(description)s</textarea>
 
-<br/>
-<input id="radios" type="radio" name="accept-terms" value="registered"/>
-Check here to confirm that you have read and accepted
-the <a href="http://www.ipcc-data.org/ddc_registered-download_terms.html" target="_blank">terms and conditions</a>.
-
-<br/>
-<input id="radios" type="checkbox" name="contactable" value="no"/>
-Check here if you do not want to receive any emails from us.
-<br/>
-</td><td></td><td class="c">
-<br/>
-<input id="radios" type="radio" name="accept-terms" value="anonymous"/>
-Check here to confirm that you have read and accepted
-the <a href="http://www.ipcc-data.org/ddc_anon-download_terms.html" target="_blank">terms and conditions for anonymous download</a>:
-and then click below for anonymous download.
-</td>
-</tr>
-</table>
-
-<input id="radios" type="radio" name="cookie" value="post-cookie" CHECKED/><label class="radios" for="cookie">Set a cookie to remember this decision for one year</label>
-<br/>
-<input id="radios" type="radio" name="cookie" value="no-cookie"/><label class="radios" for="cookie">Repeat the question next time I request a file</label>
-
-<br/>
-
-<input type="submit" name="forwardbutton" value="Download"/>
-<input type="hidden" name="ddc-data-downl" value="sending"/>
-<input type="hidden" name="http-referer" value="%(referer)s"/>
-</form>
-<br/>
-<a href="%(referer)s">Return to previous page</a>
+        <input type="submit" name="forwardbutton" value="Download"/>
+        <input type="hidden" name="ddc-data-downl" value="sending"/>
+        <input type="hidden" name="http-referer" value="%(referer)s"/>
+    </form>
+    <br/>
+    <a href="%(referer)s">Return to previous page</a>
 </center>
 
 </body>
